@@ -8,7 +8,7 @@
 using namespace std;
 
 /* --- MUNDO --- */
-const int tam = 21;  // Tamaño del laberinto (matriz cuadrada 21x21)
+pair<int,int> tam;    // tam.first = filas, tam.second = columnas
 string pared = "🟦";      // Pared
 string camino = "⬜";     // Camino libre
 string explorador = "🔴"; // Al recorrer el laberinto marca el camino a la salida
@@ -24,15 +24,14 @@ struct Celda {
 /* --- CREAR MUNDO --- */
 // Inicializa una matriz llena de paredes
 vector<vector<string>> crear_mundo() {
-    vector<vector<string>> matriz(tam, vector<string>(tam, pared));
+    vector<vector<string>> matriz(tam.first, vector<string>(tam.second, pared));
     return matriz;
 }
 
 /* --- IMPRIMIR MUNDO --- */
-// Recorre la matriz y la imprime por pantalla
 void imprimir_mundo(const vector<vector<string>>& matriz) {
-    for (int i = 0; i < tam; i++) {
-        for (int j = 0; j < tam; j++) {
+    for (int i = 0; i < tam.first; i++) {
+        for (int j = 0; j < tam.second; j++) {
             cout << matriz[i][j];
         }
         cout << endl;
@@ -41,7 +40,6 @@ void imprimir_mundo(const vector<vector<string>>& matriz) {
 }
 
 /* --- DIRECCIONES --- */
-// Direcciones que el explorador puede moverse al generar el laberinto (pasos de 2 para romper paredes y dejar el intemedio como camino)
 vector<Celda> direcciones = {
     {-2, 0},  // arriba
     { 2, 0},  // abajo
@@ -50,7 +48,6 @@ vector<Celda> direcciones = {
 };
 
 /* --- VALIDAR MOVIMIENTO --- */
-// Verifica si el movimiento desde fila o columna en la dirección 'dir' es válido dentro de los límites y sobre pared
 bool es_movimiento_valido(const vector<vector<string>>& matriz,
                           int fila, int col,
                           Celda dir) {
@@ -58,13 +55,11 @@ bool es_movimiento_valido(const vector<vector<string>>& matriz,
     int nueva_fila = fila + dir.fila;
     int nueva_col  = col + dir.col;
 
-    // Revisar que no salga del laberinto
-    if (nueva_fila <= 0 || nueva_fila >= tam - 1 ||
-        nueva_col  <= 0 || nueva_col  >= tam - 1) {
+    if (nueva_fila <= 0 || nueva_fila >= tam.first - 1 ||
+        nueva_col  <= 0 || nueva_col  >= tam.second - 1) {
         return false;
     }
 
-    // Verificar que la celda de destino sea pared
     if (matriz[nueva_fila][nueva_col] != pared) {
         return false;
     }
@@ -72,189 +67,185 @@ bool es_movimiento_valido(const vector<vector<string>>& matriz,
     return true;
 }
 
-/* --- MOVER EXPLORADOR o ROMPER PARED --- */
-// Dado un movimiento válido, rompe la pared intermedia y marca la celda destino como camino
+/* --- MOVER EXPLORADOR --- */
 Celda mover_explorador(vector<vector<string>>& matriz,
                        int fila, int col,
                        Celda dir) {
 
-    // Calcular la celda intermedia (pared que se rompe)
     int inter_fila = fila + dir.fila / 2;
     int inter_col  = col  + dir.col  / 2;
 
     int nueva_fila = fila + dir.fila;
     int nueva_col  = col  + dir.col;
 
-    // Romper la pared intermedia y marcar la nueva celda como camino
     matriz[inter_fila][inter_col] = camino;
     matriz[nueva_fila][nueva_col] = camino;
 
-    return {nueva_fila, nueva_col}; // Retornar nueva posición del explorador
+    return {nueva_fila, nueva_col};
 }
 
-/* --- GENERAR LABERINTO - BACKTRACKING --- */
-// DFS iterativo para generar laberinto
+/* --- GENERAR LABERINTO --- */
 void generar_laberinto(vector<vector<string>>& matriz) {
 
-    vector<Celda> memoria;  // Pila para backtracking
+    vector<Celda> memoria;
 
-    Celda inicio = {1, 1};          // Empezamos desde la celda (1,1)
-    matriz[inicio.fila][inicio.col] = camino; // Marcamos inicio como camino
-    memoria.push_back(inicio);      // Añadimos inicio a la pila
+    Celda inicio = {1, 1};
+    matriz[inicio.fila][inicio.col] = camino;
+    memoria.push_back(inicio);
     
     while (!memoria.empty()) {
         
-        Celda actual = memoria.back(); // Tomamos la celda actual de la pila
+        Celda actual = memoria.back();
         vector<Celda> direcciones_validas;
-
-        // Revisar todas las direcciones posibles desde la celda actual
+        
         for (Celda dir : direcciones) {
-            if (es_movimiento_valido(matriz, actual.fila, actual.col, dir)) {
-                direcciones_validas.push_back(dir); // Guardamos solo movimientos válidos
+            if (es_movimiento_valido(matriz,
+                                     actual.fila,
+                                     actual.col,
+                                     dir)) {
+                direcciones_validas.push_back(dir);
             }
         }
-
+        
         if (!direcciones_validas.empty()) {
-            // Escoger una dirección válida aleatoriamente
+            
             Celda dir = direcciones_validas[rand() % direcciones_validas.size()];
 
-            // Mover al explorador y romper la pared intermedia
-            Celda nueva = mover_explorador(matriz, actual.fila, actual.col, dir);
-
-            memoria.push_back(nueva); // Añadir nueva celda a la pila (continuar DFS)
+            Celda nueva = mover_explorador(matriz,
+                actual.fila,
+                actual.col,
+                dir);
+                                           
+            memoria.push_back(nueva);
+            
         } else {
-            memoria.pop_back(); // No hay movimientos, retroceder
+            memoria.pop_back();
         }
     }
 }
 
-/* --- RESOLVER LABERINTO - BFS --- */
-// BFS para encontrar el camino más corto desde entrada hasta salida
+/* --- RESOLVER LABERINTO --- */
 void resolver_laberinto(vector<vector<string>> & matriz) {    
     
-    Celda entrada = {0, 0};             // Inicializamos coordenadas de entrada
-    Celda salida_celda = {tam - 1, tam - 1}; // Inicializamos coordenadas de salida
+    Celda entrada = {0, 0};
+    Celda salida_celda = {tam.first - 1, tam.second - 1};
     
-    queue<Celda> memoria;                // Cola para BFS
+    queue<Celda> memoria;
 
-    vector<vector<bool>> visitada(tam, vector<bool>(tam, false)); // Matriz de visitados
-    vector<vector<Celda>> padre(tam, vector<Celda>(tam));         // Para reconstruir el camino
+    vector<vector<bool>> visitada(tam.first, vector<bool>(tam.second, false));
+    vector<vector<Celda>> padre(tam.first, vector<Celda>(tam.second));
 
-    // Buscar posición real de entrada y salida en la primera y última fila
-    for (int col = 0; col < tam; col++) {
+    for (int col = 0; col < tam.second; col++) {
         if (matriz[0][col] == "🟩") {
             entrada = {0, col};
             break;
         }
     }
-    for (int col = 0; col < tam; col++) {
-        if (matriz[tam-1][col] == "🏁") {
-            salida_celda = {tam - 1, col};
+    for (int col = 0; col < tam.second; col++) {
+        if (matriz[tam.first-1][col] == "🏁") {
+            salida_celda = {tam.first-1, col};
             break;
         }
     }
     
-    // La posición inicial de BFS es la celda debajo de la entrada (conectada al laberinto)
     Celda pos_actual = {entrada.fila + 1, entrada.col};
-    visitada[pos_actual.fila][pos_actual.col] = true;       // Marcamos como visitado
-    padre[pos_actual.fila][pos_actual.col] = {-1, -1};      // Padre inicial nulo para reconstruccion de camino
+    visitada[pos_actual.fila][pos_actual.col] = true;
+    padre[pos_actual.fila][pos_actual.col] = {-1, -1};
 
-    memoria.push(pos_actual);  // Añadir a la cola
-
-    // Vecinos posibles (arriba, abajo, izquierda, derecha)
-    // un vecino es una celda que se puede alcanzar desde el actual ej. si estoy en (2,2) un vecino es (1,2) o (3,2) o (2,1) o (2,3)
+    memoria.push(pos_actual);
+        
     vector<pair<int,int>> vecino = {
         {-1, 0},
         { 1, 0},
         { 0,-1},
-        { 0, 1}};
+        { 0, 1}
+    };
         
-    bool encontrada = false;  // Bandera para indicar si se encontró la salida
+    bool encontrada = false;
 
-    // Ciclo principal BFS
     while (!memoria.empty()) {
         
-        pos_actual = memoria.front(); // Tomamos el primer elemento de la cola
-        memoria.pop();                // Lo removemos
+        pos_actual = memoria.front();
+        memoria.pop();
 
-        // Si llegamos a la salida, terminamos
         if (pos_actual.fila == salida_celda.fila && pos_actual.col == salida_celda.col) {
             encontrada = true; 
             break;
         }
 
-        // Revisamos vecinos de la celda actual
         for (auto dir : vecino) {
 
             int fila_vecino = pos_actual.fila + dir.first;
             int col_vecino  = pos_actual.col  + dir.second;
 
-            // Solo agregamos vecinos dentro de límites, no visitados y que sean camino o salida
-            if (fila_vecino >= 0 && fila_vecino < tam &&
-                col_vecino  >= 0 && col_vecino  < tam &&
+            if (fila_vecino >= 0 && fila_vecino < tam.first &&
+                col_vecino  >= 0 && col_vecino  < tam.second &&
                 visitada[fila_vecino][col_vecino] == false &&
                 (matriz[fila_vecino][col_vecino] == camino ||
                  matriz[fila_vecino][col_vecino] == salida)) {
 
-                visitada[fila_vecino][col_vecino] = true;    // Marcamos como visitado
-                padre[fila_vecino][col_vecino] = pos_actual; // Guardamos de dónde venimos
-                memoria.push({fila_vecino, col_vecino});     // Añadimos a la cola BFS
+                visitada[fila_vecino][col_vecino] = true;
+                padre[fila_vecino][col_vecino] = pos_actual;
+                memoria.push({fila_vecino, col_vecino});
             }
         }
     }
 
-    // Reconstruir camino desde la salida hasta la entrada usando matriz padre
     if (encontrada) {
         Celda actual = salida_celda;
 
         while (!(actual.fila == entrada.fila && actual.col == entrada.col)) {
-            if (actual.fila < 0 || actual.col < 0 || actual.fila >= tam || actual.col >= tam) {
-                break;  // Evitar acceso fuera de límites
+            if (actual.fila < 0 || actual.col < 0 || actual.fila >= tam.first || actual.col >= tam.second) {
+                break;
             }
-            matriz[actual.fila][actual.col] = "🔴"; // Marcamos el camino encontrado
-            actual = padre[actual.fila][actual.col]; // Retrocedemos al padre
+            matriz[actual.fila][actual.col] = "🔴";
+            actual = padre[actual.fila][actual.col];
         }
 
-        matriz[entrada.fila][entrada.col] = "🟩"; // Dejamos la entrada intacta
+        matriz[entrada.fila][entrada.col] = "🟩";
+    } else {
+        cout << "No se encontro camino a la salida" << endl;
     }
 }
 
 /* --- MAIN --- */
 int main() {
+    cout << "Ingrese cantidad de filas (impar y >=5): ";
+    cin >> tam.first;
+    cout << "Ingrese cantidad de columnas (impar y >=5): ";
+    cin >> tam.second;
 
-    srand(time(0)); // Semilla aleatoria basada en el tiempo
+    srand(time(0));
 
     cout << "Creando mundo..." << endl << endl;
 
-    vector<vector<string>> mundo = crear_mundo(); // Crear matriz inicial llena de paredes
+    vector<vector<string>> mundo = crear_mundo();
 
-    generar_laberinto(mundo); // Generar laberinto aleatorio
+    generar_laberinto(mundo);
     
-    // Conectar entrada al laberinto (fila 0 con fila 1)
-    for (int col = 0; col < tam; col++) {
+    for (int col = 0; col < tam.second; col++) {
         if (mundo[1][col] == camino) {
-            mundo[0][col] = entrada;   // Icono de entrada
-            mundo[1][col] = camino;    // Asegurar conexión real
+            mundo[0][col] = entrada;
+            mundo[1][col] = camino;
             break;
         }
     }
 
-    // Conectar salida al laberinto (fila tam-1 con fila tam-2)
-    for (int col = tam-1; col >= 0; col--) {
-        if (mundo[tam-2][col] == camino) {
-            mundo[tam-1][col] = salida;   // Icono de salida
-            mundo[tam-2][col] = camino;   // Asegurar conexión real
+    for (int col = tam.second-1; col >= 0; col--) {
+        if (mundo[tam.first-2][col] == camino) {
+            mundo[tam.first-1][col] = salida;
+            mundo[tam.first-2][col] = camino;
             break;
         }
     }
 
-    imprimir_mundo(mundo); // Mostrar laberinto generado
+    imprimir_mundo(mundo);
 
     cout << "Resolviendo laberinto..." << endl << endl;
 
-    resolver_laberinto(mundo); // Ejecutar BFS para encontrar camino
+    resolver_laberinto(mundo);
 
-    imprimir_mundo(mundo); // Mostrar laberinto con camino encontrado
+    imprimir_mundo(mundo);
 
     return 0;
 }
